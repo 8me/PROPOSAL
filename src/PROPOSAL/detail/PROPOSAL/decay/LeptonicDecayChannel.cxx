@@ -96,6 +96,60 @@ double LeptonicDecayChannelApprox::FindRoot(double min, double parent_mass, doub
 }
 
 // ------------------------------------------------------------------------- //
+double LeptonicDecayChannelApprox::CZSampler(double x, double P, std::string particle_name, double uy)
+{
+    //P is the magnitude of the polarization vector.
+    double a = 0.5 * P * (1. - 2*x);
+    double b = (3. - 2.*x);
+
+    if (particle_name == "TauPlus")
+        a = -a;
+
+    double c = b - a - 2*(3.-2*x) * uy;
+
+    double result = (-b + sqrt(b*b - 4 * a * c))/( 2* a);
+
+    return result;
+}
+Cartesian3D LeptonicDecayChannelApprox::RotateX(Cartesian3D vec, double theta){
+
+    double x = vec.GetX();
+    double y = vec.GetY();
+    double z = vec.GetZ();
+
+    double cth = std::cos(theta);
+    double sth = std::sin(theta);
+    Cartesian3D rotated_vec = Cartesian3D(x, y*cth - z*sth, y*sth + z*cth);
+
+    return rotated_vec;
+}
+
+Cartesian3D LeptonicDecayChannelApprox::RotateY(Cartesian3D vec, double theta){
+
+    double x = vec.GetX();
+    double y = vec.GetY();
+    double z = vec.GetZ();
+
+    double cth = std::cos(theta);
+    double sth = std::sin(theta);
+    Cartesian3D rotated_vec = Cartesian3D(x*cth + z*sth, y, -x*sth + z*cth);
+
+    return rotated_vec;
+}
+
+Cartesian3D LeptonicDecayChannelApprox::RotateZ(Cartesian3D vec, double theta){
+
+    double x = vec.GetX();
+    double y = vec.GetY();
+    double z = vec.GetZ();
+
+    double cth = std::cos(theta);
+    double sth = std::sin(theta);
+    Cartesian3D rotated_vec = Cartesian3D(x*cth - y*sth, x*sth + y*cth, z);
+
+    return rotated_vec;
+}
+
 std::vector<ParticleState> LeptonicDecayChannelApprox::Decay(const ParticleDef& p_def, const ParticleState& p_condition)
 {
     assert (p_condition.direction.magnitude() > 0);
@@ -112,11 +166,40 @@ std::vector<ParticleState> LeptonicDecayChannelApprox::Decay(const ParticleDef& 
     double lepton_energy   = std::max(find_root * emax, massive_lepton_.mass);
     double lepton_momentum = std::sqrt((lepton_energy - massive_lepton_.mass) * (lepton_energy + massive_lepton_.mass));
 
+    Cartesian3D lepton_direction;
+    if (massive_lepton_.name == "TauMinus" or
+        massive_lepton_.name == "TauPlus") {
 
+        double lh_probability = lepton_momentum / (lepton_energy + 1776.0);
+
+        Cartesian3D spin;
+        if ( (massive_lepton_.name == "TauMinus") &&
+             (lh_probability < RandomGenerator::Get().RandomDouble()) ) {
+            spin = -p_condition.direction;
+        } else {
+            spin = p_condition.direction;
+        }
+
+        double sampled_cth = CZSampler(find_root, 1, massive_lepton_.name, RandomGenerator::Get().RandomDouble());
+        double sampled_phi= 2.0 * PI * RandomGenerator::Get().RandomDouble();
+        double cphi = std::cos(sampled_phi);
+        double sphi = std::sin(sampled_phi);
+        double sampled_sth = sqrt( 1. - sampled_cth*sampled_cth);
+
+        //makes the direction vector in the frame where the spin is aligned with the z-axis.
+        Cartesian3D vec_off_spin = Cartesian3D(cphi * sampled_sth, sphi * sampled_sth, sampled_cth);
+        // vec_off_spin.CalculateSphericalCoordinates();
+        // spin.CalculateSphericalCoordinates();
+        std::array<double, 3> spin_spherical = spin.GetSphericalCoordinates();
+        lepton_direction = RotateZ(RotateY(vec_off_spin, spin_spherical[2]), spin_spherical[1]);
+    } else {
+        lepton_direction = GenerateRandomDirection();
+
+    }
     // Sample directions For the massive letpon
     ParticleState massive_lepton((ParticleType)massive_lepton_.particle_type,
                                  p_condition.position,
-                                 GenerateRandomDirection(),
+                                 lepton_direction,
                                  lepton_energy,
                                  p_condition.time,
                                  0.);

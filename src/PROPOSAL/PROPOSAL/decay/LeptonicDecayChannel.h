@@ -70,6 +70,13 @@ protected:
     virtual double DifferentialDecayRate(double x, double parent_mass, double E_max);
 
     double FindRoot(double min, double parent_mass, double E_max, double right_side);
+
+private:
+    double CZSampler(double x, double P, std::string particle_name, double uy);
+    Cartesian3D RotateX(Cartesian3D vec, double theta);
+    Cartesian3D RotateY(Cartesian3D vec, double theta);
+    Cartesian3D RotateZ(Cartesian3D vec, double theta);
+
 };
 
 class LeptonicDecayChannel : public LeptonicDecayChannelApprox
