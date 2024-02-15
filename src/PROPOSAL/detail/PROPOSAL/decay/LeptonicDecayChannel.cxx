@@ -167,13 +167,13 @@ std::vector<ParticleState> LeptonicDecayChannelApprox::Decay(const ParticleDef& 
     double lepton_momentum = std::sqrt((lepton_energy - massive_lepton_.mass) * (lepton_energy + massive_lepton_.mass));
 
     Cartesian3D lepton_direction;
-    if (massive_lepton_.name == "TauMinus" or
-        massive_lepton_.name == "TauPlus") {
 
+    if( abs(p_def.particle_type) == 15 )
+    {
         double lh_probability = lepton_momentum / (lepton_energy + 1776.0);
 
         Cartesian3D spin;
-        if ( (massive_lepton_.name == "TauMinus") &&
+        if ( (p_def.particle_type == 15) &&
              (lh_probability < RandomGenerator::Get().RandomDouble()) ) {
             spin = -p_condition.direction;
         } else {
